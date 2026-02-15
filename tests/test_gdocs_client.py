@@ -14,7 +14,10 @@ class TestGDocsClient:
         mock_build.side_effect = lambda service, version, credentials: (
             mock_docs if service == "docs" else mock_drive
         )
-        mock_drive.files().create().execute.return_value = {"id": "doc_123"}
+        mock_docs.documents().create().execute.return_value = {
+            "documentId": "doc_123"
+        }
+        mock_drive.files().get().execute.return_value = {"parents": ["root"]}
 
         client = GDocsClient(
             service_account_info={"type": "service_account"},
