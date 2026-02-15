@@ -66,8 +66,10 @@ class ZoomClient:
         return data.get("meetings", [])
 
     def download_transcript(self, download_url: str) -> str:
-        """VTTファイルをダウンロードする。"""
-        resp = self._api_get(download_url)
+        """VTTファイルをダウンロードする。録画ダウンロードURLはクエリパラメータ認証を使う。"""
+        token = self._ensure_token()
+        resp = requests.get(download_url, params={"access_token": token})
+        resp.raise_for_status()
         return resp.text
 
     def get_transcript_url(self, meeting: dict) -> str | None:
