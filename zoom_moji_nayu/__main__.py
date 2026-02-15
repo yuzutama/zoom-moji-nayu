@@ -132,7 +132,7 @@ def process_recordings(
 
             # Discord通知
             discord.notify(
-                meeting_topic=metadata.topic,
+                meeting_topic=doc_title,
                 gdocs_url=gdocs_url,
                 recording_url=recording_url,
             )
