@@ -67,8 +67,7 @@ class ZoomClient:
 
     def download_transcript(self, download_url: str) -> str:
         """VTTファイルをダウンロードする。"""
-        token = self._ensure_token()
-        resp = self._api_get(download_url, params={"access_token": token})
+        resp = self._api_get(download_url)
         return resp.text
 
     def get_transcript_url(self, meeting: dict) -> str | None:
