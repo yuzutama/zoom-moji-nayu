@@ -15,9 +15,10 @@ def get_zoom_config() -> dict:
 def get_google_config() -> dict:
     """Google API設定を環境変数から取得する。"""
     return {
-        "service_account_json": os.environ["GOOGLE_SERVICE_ACCOUNT_JSON"],
+        "client_id": os.environ["GOOGLE_CLIENT_ID"],
+        "client_secret": os.environ["GOOGLE_CLIENT_SECRET"],
+        "refresh_token": os.environ["GOOGLE_REFRESH_TOKEN"],
         "drive_folder_id": os.environ["GOOGLE_DRIVE_FOLDER_ID"],
-        "impersonate_email": os.environ.get("GOOGLE_IMPERSONATE_EMAIL", ""),
     }
 
 
