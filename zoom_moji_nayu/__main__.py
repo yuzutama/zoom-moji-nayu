@@ -122,7 +122,11 @@ def process_recordings(
 
             markdown = format_full_document(segments, metadata, summary)
 
-            doc_title = f"{date_str[:10]}_{metadata.topic}"
+            participants_str = "、".join(participants[:5]) if participants else ""
+            if participants_str:
+                doc_title = f"{date_str[:10]}_{participants_str}_{metadata.topic}"
+            else:
+                doc_title = f"{date_str[:10]}_{metadata.topic}"
             doc_id = gdocs.create_document(title=doc_title, markdown_content=markdown)
             gdocs_url = gdocs.get_document_url(doc_id)
 

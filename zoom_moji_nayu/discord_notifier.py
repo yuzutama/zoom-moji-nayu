@@ -21,7 +21,7 @@ class DiscordNotifier:
     ) -> None:
         """Discord Webhookで会議の処理完了を通知する。"""
         lines = [
-            f"**会議文字起こし完了: {meeting_topic}**",
+            f"**{meeting_topic}**",
             f"議事録: {gdocs_url}",
         ]
         if recording_url:
