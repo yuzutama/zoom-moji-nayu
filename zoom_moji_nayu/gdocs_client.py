@@ -34,12 +34,17 @@ class GDocsClient:
 
     def create_document(self, title: str, markdown_content: str) -> str:
         """MarkdownコンテンツからGoogle Docsドキュメントを作成し、指定フォルダに配置する。"""
-        doc = (
-            self.docs_service.documents()
-            .create(body={"title": title})
+        file_metadata = {
+            "name": title,
+            "mimeType": "application/vnd.google-apps.document",
+            "parents": [self.folder_id],
+        }
+        file = (
+            self.drive_service.files()
+            .create(body=file_metadata, fields="id")
             .execute()
         )
-        doc_id = doc["documentId"]
+        doc_id = file["id"]
 
         requests = self._markdown_to_docs_requests(markdown_content)
         if requests:
@@ -56,19 +61,6 @@ class GDocsClient:
                         time.sleep(wait)
                     else:
                         raise
-
-        file_info = (
-            self.drive_service.files()
-            .get(fileId=doc_id, fields="parents")
-            .execute()
-        )
-        prev_parents = ",".join(file_info.get("parents", []))
-        self.drive_service.files().update(
-            fileId=doc_id,
-            addParents=self.folder_id,
-            removeParents=prev_parents,
-            fields="id, parents",
-        ).execute()
 
         logger.info("Created document: %s (ID: %s)", title, doc_id)
         return doc_id
