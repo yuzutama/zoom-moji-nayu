@@ -66,9 +66,13 @@ class ZoomClient:
         return data.get("meetings", [])
 
     def download_transcript(self, download_url: str) -> str:
-        """VTTファイルをダウンロードする。録画ダウンロードURLはクエリパラメータ認証を使う。"""
+        """VTTファイルをダウンロードする。Bearerヘッダーでリダイレクトを手動処理。"""
         token = self._ensure_token()
-        resp = requests.get(download_url, params={"access_token": token})
+        headers = {"Authorization": f"Bearer {token}"}
+        resp = requests.get(download_url, headers=headers, allow_redirects=False)
+        if resp.status_code in (301, 302):
+            redirect_url = resp.headers["Location"]
+            resp = requests.get(redirect_url)
         resp.raise_for_status()
         return resp.text
 
