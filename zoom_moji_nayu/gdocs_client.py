@@ -6,7 +6,7 @@ import logging
 import re
 import time
 
-from google.oauth2.service_account import Credentials
+from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 
 logger = logging.getLogger(__name__)
@@ -19,12 +19,15 @@ MAX_RETRIES = 3
 
 
 class GDocsClient:
-    def __init__(self, service_account_info: dict, folder_id: str, impersonate_email: str = ""):
-        creds = Credentials.from_service_account_info(
-            service_account_info, scopes=SCOPES
+    def __init__(self, client_id: str, client_secret: str, refresh_token: str, folder_id: str):
+        creds = Credentials(
+            token=None,
+            refresh_token=refresh_token,
+            client_id=client_id,
+            client_secret=client_secret,
+            token_uri="https://oauth2.googleapis.com/token",
+            scopes=SCOPES,
         )
-        if impersonate_email:
-            creds = creds.with_subject(impersonate_email)
         self.docs_service = build("docs", "v1", credentials=creds)
         self.drive_service = build("drive", "v3", credentials=creds)
         self.folder_id = folder_id
