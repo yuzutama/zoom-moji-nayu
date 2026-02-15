@@ -60,7 +60,7 @@ class ZoomClient:
 
     def get_recordings(self, from_date: str, to_date: str) -> list[dict]:
         """指定期間の録画一覧を取得する。"""
-        url = f"{ZOOM_API_BASE}/users/me/recordings"
+        url = f"{ZOOM_API_BASE}/accounts/me/recordings"
         resp = self._api_get(url, params={"from": from_date, "to": to_date})
         data = resp.json()
         return data.get("meetings", [])
