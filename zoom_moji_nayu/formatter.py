@@ -17,8 +17,7 @@ class MeetingMetadata:
 @dataclass
 class SummaryData:
     summary: str
-    agenda_decisions: str
-    todos: str
+    chapters: str
 
 
 @dataclass
@@ -137,17 +136,15 @@ def format_full_document(
             "",
             summary.summary,
             "",
-            "## 議題・決定事項",
-            "",
-            summary.agenda_decisions,
-            "",
-            "## TODO / アクションアイテム",
-            "",
-            summary.todos,
-            "",
-            "---",
-            "",
         ])
+        if summary.chapters:
+            lines.extend([
+                "## トピック",
+                "",
+                summary.chapters,
+                "",
+            ])
+        lines.extend(["---", ""])
 
     lines.extend([
         "## 文字起こし",

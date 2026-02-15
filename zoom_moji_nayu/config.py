@@ -20,12 +20,6 @@ def get_google_config() -> dict:
     }
 
 
-def get_gemini_config() -> dict:
-    """Gemini API設定を環境変数から取得する。"""
-    return {
-        "api_key": os.environ["GEMINI_API_KEY"],
-    }
-
 
 def get_discord_config() -> dict:
     """Discord Webhook設定を環境変数から取得する。"""

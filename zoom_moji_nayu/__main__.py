@@ -9,14 +9,13 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from zoom_moji_nayu.config import get_zoom_config, get_google_config, get_gemini_config, get_discord_config
+from zoom_moji_nayu.config import get_zoom_config, get_google_config, get_discord_config
 from zoom_moji_nayu.zoom_client import ZoomClient
 from zoom_moji_nayu.formatter import (
-    parse_vtt, segments_to_plain_text, format_full_document,
+    parse_vtt, format_full_document,
     MeetingMetadata, SummaryData,
 )
 from zoom_moji_nayu.gdocs_client import GDocsClient
-from zoom_moji_nayu.summarizer import Summarizer
 from zoom_moji_nayu.discord_notifier import DiscordNotifier
 
 logger = logging.getLogger(__name__)
@@ -48,10 +47,34 @@ def _extract_participants(segments) -> list[str]:
     return participants
 
 
+def _parse_zoom_summary(summary_data: dict) -> SummaryData | None:
+    """Zoom AI Companionの要約JSONをSummaryDataに変換する。"""
+    overall = summary_data.get("overall_summary", "")
+    items = summary_data.get("items", [])
+
+    chapter_lines = []
+    for item in items:
+        label = item.get("label", "")
+        summary = item.get("summary", "")
+        if label and summary:
+            chapter_lines.append(f"- {label}: {summary}")
+        elif label:
+            chapter_lines.append(f"- {label}")
+        elif summary:
+            chapter_lines.append(f"- {summary}")
+
+    if not overall and not chapter_lines:
+        return None
+
+    return SummaryData(
+        summary=overall,
+        chapters="\n".join(chapter_lines),
+    )
+
+
 def process_recordings(
     zoom: ZoomClient,
     gdocs: GDocsClient,
-    summarizer: Summarizer,
     discord: DiscordNotifier,
     processed_ids: list[str],
 ) -> list[str]:
@@ -69,7 +92,7 @@ def process_recordings(
             logger.info("Skipping already processed: %s", meeting_id)
             continue
 
-        transcript_url = zoom.get_transcript_url(meeting)
+        transcript_url = zoom.get_recording_url(meeting, "audio_transcript")
         if not transcript_url:
             logger.info("No transcript for: %s", meeting.get("topic", meeting_id))
             continue
@@ -78,7 +101,6 @@ def process_recordings(
             vtt_text = zoom.download_transcript(transcript_url)
             segments = parse_vtt(vtt_text)
             participants = _extract_participants(segments)
-            plain_text = segments_to_plain_text(segments)
 
             start_time = meeting.get("start_time", "")
             date_str = start_time[:10] + " " + start_time[11:16] if start_time else ""
@@ -91,8 +113,14 @@ def process_recordings(
                 recording_url=recording_url,
             )
 
-            # Gemini APIで要約生成（失敗してもNoneで続行）
-            summary = summarizer.summarize(plain_text)
+            # Zoom AI Companion要約を取得（なければNoneで続行）
+            summary = None
+            summary_url = zoom.get_recording_url(meeting, "summary")
+            if summary_url:
+                summary_json = zoom.download_summary(summary_url)
+                summary = _parse_zoom_summary(summary_json)
+            else:
+                logger.info("No summary available for: %s", metadata.topic)
 
             markdown = format_full_document(segments, metadata, summary)
 
@@ -126,7 +154,6 @@ def main() -> None:
 
     zoom_config = get_zoom_config()
     google_config = get_google_config()
-    gemini_config = get_gemini_config()
     discord_config = get_discord_config()
 
     sa_info = json.loads(base64.b64decode(google_config["service_account_json"]))
@@ -136,11 +163,10 @@ def main() -> None:
         service_account_info=sa_info,
         folder_id=google_config["drive_folder_id"],
     )
-    summarizer = Summarizer(api_key=gemini_config["api_key"])
     discord = DiscordNotifier(webhook_url=discord_config["webhook_url"])
 
     processed_ids = load_processed(PROCESSED_FILE)
-    new_ids = process_recordings(zoom, gdocs, summarizer, discord, processed_ids)
+    new_ids = process_recordings(zoom, gdocs, discord, processed_ids)
 
     if new_ids:
         all_ids = processed_ids + new_ids

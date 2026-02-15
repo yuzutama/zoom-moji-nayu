@@ -76,9 +76,20 @@ class ZoomClient:
         resp.raise_for_status()
         return resp.text
 
-    def get_transcript_url(self, meeting: dict) -> str | None:
-        """録画情報からtranscriptのダウンロードURLを取得する。"""
+    def download_summary(self, download_url: str) -> dict | None:
+        """要約JSONをダウンロードする。"""
+        token = self._ensure_token()
+        headers = {"Authorization": f"Bearer {token}"}
+        resp = requests.get(download_url, headers=headers, allow_redirects=False)
+        if resp.status_code in (301, 302):
+            redirect_url = resp.headers["Location"]
+            resp = requests.get(redirect_url)
+        resp.raise_for_status()
+        return resp.json()
+
+    def get_recording_url(self, meeting: dict, recording_type: str) -> str | None:
+        """録画情報から指定タイプのダウンロードURLを取得する。"""
         for f in meeting.get("recording_files", []):
-            if f.get("recording_type") == "audio_transcript":
+            if f.get("recording_type") == recording_type:
                 return f.get("download_url")
         return None

@@ -3,7 +3,10 @@
 import json
 from unittest.mock import patch, MagicMock
 
-from zoom_moji_nayu.__main__ import load_processed, save_processed, process_recordings
+from zoom_moji_nayu.__main__ import (
+    load_processed, save_processed, process_recordings, _parse_zoom_summary,
+)
+from zoom_moji_nayu.formatter import SummaryData
 
 
 class TestProcessedManagement:
@@ -26,13 +29,37 @@ class TestProcessedManagement:
         assert data["processed_ids"] == ["id1", "id2", "id3"]
 
 
+class TestParseZoomSummary:
+    def test_parse_with_overall_and_items(self):
+        data = {
+            "overall_summary": "会議の概要です。",
+            "items": [
+                {"label": "議題A", "summary": "Aについて議論", "start_time": "00:00:00", "end_time": "00:05:00"},
+                {"label": "議題B", "summary": "Bを決定", "start_time": "00:05:00", "end_time": "00:10:00"},
+            ],
+        }
+        result = _parse_zoom_summary(data)
+        assert isinstance(result, SummaryData)
+        assert result.summary == "会議の概要です。"
+        assert "議題A: Aについて議論" in result.chapters
+        assert "議題B: Bを決定" in result.chapters
+
+    def test_parse_empty_returns_none(self):
+        data = {"overall_summary": "", "items": []}
+        result = _parse_zoom_summary(data)
+        assert result is None
+
+    def test_parse_overall_only(self):
+        data = {"overall_summary": "要約のみ", "items": []}
+        result = _parse_zoom_summary(data)
+        assert result is not None
+        assert result.summary == "要約のみ"
+        assert result.chapters == ""
+
+
 class TestProcessRecordings:
-    @patch("zoom_moji_nayu.__main__.DiscordNotifier")
-    @patch("zoom_moji_nayu.__main__.Summarizer")
-    @patch("zoom_moji_nayu.__main__.GDocsClient")
-    @patch("zoom_moji_nayu.__main__.ZoomClient")
-    def test_skip_already_processed(self, MockZoom, MockGDocs, MockSummarizer, MockDiscord):
-        mock_zoom = MockZoom.return_value
+    def test_skip_already_processed(self):
+        mock_zoom = MagicMock()
         mock_zoom.get_recordings.return_value = [
             {
                 "uuid": "meeting_123",
@@ -40,27 +67,19 @@ class TestProcessRecordings:
                 "start_time": "2026-02-15T10:00:00Z",
                 "share_url": "https://zoom.us/rec/share/abc",
                 "recording_files": [
-                    {
-                        "recording_type": "audio_transcript",
-                        "download_url": "https://zoom.us/download",
-                    }
+                    {"recording_type": "audio_transcript", "download_url": "https://zoom.us/download"},
                 ],
             }
         ]
         processed_ids = ["meeting_123"]
         new_ids = process_recordings(
-            mock_zoom, MockGDocs.return_value, MockSummarizer.return_value,
-            MockDiscord.return_value, processed_ids,
+            mock_zoom, MagicMock(), MagicMock(), processed_ids,
         )
         assert new_ids == []
         mock_zoom.download_transcript.assert_not_called()
 
-    @patch("zoom_moji_nayu.__main__.DiscordNotifier")
-    @patch("zoom_moji_nayu.__main__.Summarizer")
-    @patch("zoom_moji_nayu.__main__.GDocsClient")
-    @patch("zoom_moji_nayu.__main__.ZoomClient")
-    def test_process_new_recording(self, MockZoom, MockGDocs, MockSummarizer, MockDiscord):
-        mock_zoom = MockZoom.return_value
+    def test_process_new_recording(self):
+        mock_zoom = MagicMock()
         mock_zoom.get_recordings.return_value = [
             {
                 "uuid": "meeting_456",
@@ -68,31 +87,31 @@ class TestProcessRecordings:
                 "start_time": "2026-02-15T14:00:00Z",
                 "share_url": "https://zoom.us/rec/share/xyz",
                 "recording_files": [
-                    {
-                        "recording_type": "audio_transcript",
-                        "download_url": "https://zoom.us/download",
-                    }
+                    {"recording_type": "audio_transcript", "download_url": "https://zoom.us/download/vtt"},
+                    {"recording_type": "summary", "download_url": "https://zoom.us/download/summary"},
                 ],
             }
         ]
-        mock_zoom.get_transcript_url.return_value = "https://zoom.us/download"
+        mock_zoom.get_recording_url.side_effect = lambda m, t: {
+            "audio_transcript": "https://zoom.us/download/vtt",
+            "summary": "https://zoom.us/download/summary",
+        }.get(t)
         mock_zoom.download_transcript.return_value = (
             "WEBVTT\n\n1\n00:00:00.000 --> 00:00:05.000\n田中: テスト\n"
         )
-        mock_gdocs = MockGDocs.return_value
+        mock_zoom.download_summary.return_value = {
+            "overall_summary": "テスト要約",
+            "items": [{"label": "トピック", "summary": "内容", "start_time": "00:00:00", "end_time": "00:05:00"}],
+        }
+
+        mock_gdocs = MagicMock()
         mock_gdocs.create_document.return_value = "doc_abc"
         mock_gdocs.get_document_url.return_value = "https://docs.google.com/document/d/doc_abc/edit"
 
-        from zoom_moji_nayu.formatter import SummaryData
-        mock_summarizer = MockSummarizer.return_value
-        mock_summarizer.summarize.return_value = SummaryData(
-            summary="テスト要約", agenda_decisions="テスト議題", todos="テストTODO"
-        )
-
-        mock_discord = MockDiscord.return_value
+        mock_discord = MagicMock()
 
         new_ids = process_recordings(
-            mock_zoom, mock_gdocs, mock_summarizer, mock_discord, [],
+            mock_zoom, mock_gdocs, mock_discord, [],
         )
         assert new_ids == ["meeting_456"]
         mock_gdocs.create_document.assert_called_once()

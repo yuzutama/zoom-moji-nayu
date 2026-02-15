@@ -73,7 +73,7 @@ class TestZoomClient:
         assert "WEBVTT" in vtt
         assert "テスト" in vtt
 
-    def test_get_transcript_url_found(self):
+    def test_get_recording_url_found(self):
         client = self._make_client()
         meeting = {
             "recording_files": [
@@ -81,13 +81,13 @@ class TestZoomClient:
                 {"recording_type": "audio_transcript", "download_url": "https://zoom.us/transcript"},
             ]
         }
-        assert client.get_transcript_url(meeting) == "https://zoom.us/transcript"
+        assert client.get_recording_url(meeting, "audio_transcript") == "https://zoom.us/transcript"
 
-    def test_get_transcript_url_not_found(self):
+    def test_get_recording_url_not_found(self):
         client = self._make_client()
         meeting = {
             "recording_files": [
                 {"recording_type": "shared_screen", "download_url": "https://zoom.us/video"},
             ]
         }
-        assert client.get_transcript_url(meeting) is None
+        assert client.get_recording_url(meeting, "audio_transcript") is None

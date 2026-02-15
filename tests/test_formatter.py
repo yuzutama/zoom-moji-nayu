@@ -86,8 +86,7 @@ class TestFormatFullDocument:
         )
         summary = SummaryData(
             summary="今日の定例会議の概要です。",
-            agenda_decisions="- 議題1: 新機能のリリース日 → 2月末に決定",
-            todos="- [ ] 田中: デザイン確認（2/20まで）",
+            chapters="- 議題A: 新機能のリリース日について議論",
         )
         md = format_full_document(segments, metadata, summary)
         assert "# 会議議事録" in md
@@ -95,8 +94,7 @@ class TestFormatFullDocument:
         assert "https://zoom.us/rec/share/abc123" in md
         assert "## 要約" in md
         assert "今日の定例会議の概要です。" in md
-        assert "## 議題・決定事項" in md
-        assert "## TODO / アクションアイテム" in md
+        assert "## トピック" in md
         assert "## 文字起こし" in md
         assert "### 00:00:00 - 00:00:05" in md
         assert "**田中太郎**" in md
