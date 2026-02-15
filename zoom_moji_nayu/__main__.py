@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import base64
 import json
 import logging
 import sys
@@ -156,13 +155,12 @@ def main() -> None:
     google_config = get_google_config()
     discord_config = get_discord_config()
 
-    sa_info = json.loads(base64.b64decode(google_config["service_account_json"]))
-
     zoom = ZoomClient(**zoom_config)
     gdocs = GDocsClient(
-        service_account_info=sa_info,
+        client_id=google_config["client_id"],
+        client_secret=google_config["client_secret"],
+        refresh_token=google_config["refresh_token"],
         folder_id=google_config["drive_folder_id"],
-        impersonate_email=google_config["impersonate_email"],
     )
     discord = DiscordNotifier(webhook_url=discord_config["webhook_url"])
 
