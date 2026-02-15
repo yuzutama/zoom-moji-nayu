@@ -41,7 +41,7 @@ class GDocsClient:
         }
         file = (
             self.drive_service.files()
-            .create(body=file_metadata, fields="id")
+            .create(body=file_metadata, fields="id", supportsAllDrives=True)
             .execute()
         )
         doc_id = file["id"]
