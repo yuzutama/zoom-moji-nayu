@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import logging
-import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -75,7 +74,7 @@ def process_recordings(
     zoom: ZoomClient,
     gdocs: GDocsClient,
     discord: DiscordNotifier,
-    processed_ids: list[str],
+    processed_ids: set[str],
 ) -> list[str]:
     """未処理の録画を処理し、新たに処理したIDのリストを返す。"""
     now = datetime.now(timezone.utc)
@@ -164,11 +163,11 @@ def main() -> None:
     )
     discord = DiscordNotifier(webhook_url=discord_config["webhook_url"])
 
-    processed_ids = load_processed(PROCESSED_FILE)
+    processed_ids = set(load_processed(PROCESSED_FILE))
     new_ids = process_recordings(zoom, gdocs, discord, processed_ids)
 
     if new_ids:
-        all_ids = processed_ids + new_ids
+        all_ids = list(processed_ids) + new_ids
         save_processed(PROCESSED_FILE, all_ids)
         logger.info("Processed %d new recordings", len(new_ids))
     else:
