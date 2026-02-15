@@ -62,6 +62,12 @@ class GDocsClient:
                     else:
                         raise
 
+        self.drive_service.permissions().create(
+            fileId=doc_id,
+            body={"type": "anyone", "role": "reader"},
+            supportsAllDrives=True,
+        ).execute()
+
         logger.info("Created document: %s (ID: %s)", title, doc_id)
         return doc_id
 
