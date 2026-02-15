@@ -33,9 +33,9 @@ class TestParseSummaryResponse:
 class TestSummarizer:
     @patch("zoom_moji_nayu.summarizer.genai")
     def test_summarize(self, mock_genai):
-        mock_model = MagicMock()
-        mock_genai.GenerativeModel.return_value = mock_model
-        mock_model.generate_content.return_value = MagicMock(
+        mock_client = MagicMock()
+        mock_genai.Client.return_value = mock_client
+        mock_client.models.generate_content.return_value = MagicMock(
             text="""## 要約
 テスト要約です。
 
@@ -53,9 +53,9 @@ class TestSummarizer:
 
     @patch("zoom_moji_nayu.summarizer.genai")
     def test_summarize_api_failure_returns_none(self, mock_genai):
-        mock_model = MagicMock()
-        mock_genai.GenerativeModel.return_value = mock_model
-        mock_model.generate_content.side_effect = Exception("API error")
+        mock_client = MagicMock()
+        mock_genai.Client.return_value = mock_client
+        mock_client.models.generate_content.side_effect = Exception("API error")
 
         summarizer = Summarizer(api_key="test_key")
         result = summarizer.summarize("テスト")

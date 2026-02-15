@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import time
 
-import google.generativeai as genai
+from google import genai
 
 from zoom_moji_nayu.formatter import SummaryData
 
@@ -68,8 +68,7 @@ def parse_summary_response(text: str) -> SummaryData | None:
 
 class Summarizer:
     def __init__(self, api_key: str):
-        genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel("gemini-2.0-flash")
+        self.client = genai.Client(api_key=api_key)
 
     def summarize(self, transcript_text: str) -> SummaryData | None:
         """文字起こしテキストから要約・議事録・TODOを生成する。"""
@@ -77,7 +76,7 @@ class Summarizer:
 
         for attempt in range(MAX_RETRIES):
             try:
-                response = self.model.generate_content(prompt)
+                response = self.client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
                 return parse_summary_response(response.text)
             except Exception as e:
                 if attempt < MAX_RETRIES - 1:
