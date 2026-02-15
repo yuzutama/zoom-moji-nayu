@@ -162,6 +162,7 @@ def main() -> None:
     gdocs = GDocsClient(
         service_account_info=sa_info,
         folder_id=google_config["drive_folder_id"],
+        impersonate_email=google_config["impersonate_email"],
     )
     discord = DiscordNotifier(webhook_url=discord_config["webhook_url"])
 

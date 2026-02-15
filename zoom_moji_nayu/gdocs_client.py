@@ -19,45 +19,15 @@ MAX_RETRIES = 3
 
 
 class GDocsClient:
-    def __init__(self, service_account_info: dict, folder_id: str):
+    def __init__(self, service_account_info: dict, folder_id: str, impersonate_email: str = ""):
         creds = Credentials.from_service_account_info(
             service_account_info, scopes=SCOPES
         )
+        if impersonate_email:
+            creds = creds.with_subject(impersonate_email)
         self.docs_service = build("docs", "v1", credentials=creds)
         self.drive_service = build("drive", "v3", credentials=creds)
         self.folder_id = folder_id
-        self._folder_owner: str | None = None
-
-    def _get_folder_owner(self) -> str | None:
-        """フォルダのオーナーメールアドレスを取得する。"""
-        if self._folder_owner:
-            return self._folder_owner
-        try:
-            folder = self.drive_service.files().get(
-                fileId=self.folder_id, fields="owners"
-            ).execute()
-            owners = folder.get("owners", [])
-            if owners:
-                self._folder_owner = owners[0]["emailAddress"]
-                return self._folder_owner
-        except Exception as e:
-            logger.warning("Could not get folder owner: %s", e)
-        return None
-
-    def _transfer_ownership(self, file_id: str) -> None:
-        """ファイルの所有権をフォルダオーナーに移転する。"""
-        owner_email = self._get_folder_owner()
-        if not owner_email:
-            return
-        try:
-            self.drive_service.permissions().create(
-                fileId=file_id,
-                body={"type": "user", "role": "owner", "emailAddress": owner_email},
-                transferOwnership=True,
-            ).execute()
-            logger.info("Transferred ownership to %s", owner_email)
-        except Exception as e:
-            logger.warning("Could not transfer ownership: %s", e)
 
     def create_document(self, title: str, markdown_content: str) -> str:
         """MarkdownコンテンツからGoogle Docsドキュメントを作成し、指定フォルダに配置する。"""
@@ -84,8 +54,6 @@ class GDocsClient:
                         time.sleep(wait)
                     else:
                         raise
-
-        self._transfer_ownership(doc_id)
 
         logger.info("Created document: %s (ID: %s)", title, doc_id)
         return doc_id

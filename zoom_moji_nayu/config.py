@@ -17,6 +17,7 @@ def get_google_config() -> dict:
     return {
         "service_account_json": os.environ["GOOGLE_SERVICE_ACCOUNT_JSON"],
         "drive_folder_id": os.environ["GOOGLE_DRIVE_FOLDER_ID"],
+        "impersonate_email": os.environ.get("GOOGLE_IMPERSONATE_EMAIL", ""),
     }
 
 
