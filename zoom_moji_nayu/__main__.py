@@ -110,8 +110,12 @@ def process_recordings(
             new_ids.append(meeting_id)
             logger.info("Processed: %s", metadata.topic)
 
-        except Exception:
+        except Exception as e:
             logger.exception("Failed to process meeting: %s", meeting_id)
+            discord.notify_error(
+                meeting_topic=meeting.get("topic", meeting_id),
+                error_message=str(e),
+            )
             continue
 
     return new_ids
