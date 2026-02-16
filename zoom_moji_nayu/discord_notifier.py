@@ -7,6 +7,7 @@ import logging
 import requests
 
 logger = logging.getLogger(__name__)
+DISCORD_MENTION = "@ny8888"
 
 
 class DiscordNotifier:
@@ -21,6 +22,7 @@ class DiscordNotifier:
     ) -> None:
         """Discord Webhookで会議の処理完了を通知する。"""
         lines = [
+            DISCORD_MENTION,
             f"**{meeting_topic}**",
             f"議事録: {gdocs_url}",
         ]
@@ -46,6 +48,7 @@ class DiscordNotifier:
     ) -> None:
         """Discord Webhookで処理エラーを通知する。"""
         payload = {
+            "content": DISCORD_MENTION,
             "embeds": [
                 {
                     "title": f"処理エラー: {meeting_topic}",

@@ -18,6 +18,7 @@ class TestDiscordNotifier:
         mock_post.assert_called_once()
         call_args = mock_post.call_args
         payload = call_args[1]["json"]
+        assert "@ny8888" in payload["content"]
         assert "週次定例ミーティング" in payload["content"]
         assert "https://docs.google.com/document/d/abc/edit" in payload["content"]
         assert "https://zoom.us/rec/share/xyz" in payload["content"]
@@ -43,6 +44,7 @@ class TestDiscordNotifier:
         mock_post.assert_called_once()
         call_args = mock_post.call_args
         payload = call_args[1]["json"]
+        assert payload["content"] == "@ny8888"
         assert payload["embeds"][0]["title"] == "処理エラー: エラー会議"
         assert payload["embeds"][0]["color"] == 0xFF0000
 

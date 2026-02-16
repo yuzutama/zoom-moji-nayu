@@ -87,9 +87,36 @@ class ZoomClient:
         resp.raise_for_status()
         return resp.json()
 
+    @staticmethod
+    def _is_japanese_transcript(file_info: dict) -> bool:
+        """録画ファイル情報から日本語文字起こしかどうかを判定する。"""
+        candidates = [
+            file_info.get("language"),
+            file_info.get("transcript_language"),
+            file_info.get("file_language"),
+            file_info.get("language_code"),
+        ]
+        for value in candidates:
+            if isinstance(value, str) and value.lower().startswith("ja"):
+                return True
+        return False
+
     def get_recording_url(self, meeting: dict, recording_type: str) -> str | None:
         """録画情報から指定タイプのダウンロードURLを取得する。"""
-        for f in meeting.get("recording_files", []):
-            if f.get("recording_type") == recording_type:
+        files = [
+            f for f in meeting.get("recording_files", [])
+            if f.get("recording_type") == recording_type
+        ]
+        if not files:
+            return None
+
+        # 文字起こしは日本語があれば優先して使用する。
+        if recording_type == "audio_transcript":
+            for f in files:
+                if self._is_japanese_transcript(f):
+                    return f.get("download_url")
+
+        for f in files:
+            if f.get("download_url"):
                 return f.get("download_url")
         return None

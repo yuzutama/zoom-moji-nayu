@@ -83,6 +83,37 @@ class TestZoomClient:
         }
         assert client.get_recording_url(meeting, "audio_transcript") == "https://zoom.us/transcript"
 
+    def test_get_recording_url_prefers_japanese_transcript(self):
+        client = self._make_client()
+        meeting = {
+            "recording_files": [
+                {
+                    "recording_type": "audio_transcript",
+                    "language": "en-US",
+                    "download_url": "https://zoom.us/transcript-en",
+                },
+                {
+                    "recording_type": "audio_transcript",
+                    "language": "ja-JP",
+                    "download_url": "https://zoom.us/transcript-ja",
+                },
+            ]
+        }
+        assert client.get_recording_url(meeting, "audio_transcript") == "https://zoom.us/transcript-ja"
+
+    def test_get_recording_url_falls_back_when_no_japanese(self):
+        client = self._make_client()
+        meeting = {
+            "recording_files": [
+                {
+                    "recording_type": "audio_transcript",
+                    "language": "en-US",
+                    "download_url": "https://zoom.us/transcript-en",
+                },
+            ]
+        }
+        assert client.get_recording_url(meeting, "audio_transcript") == "https://zoom.us/transcript-en"
+
     def test_get_recording_url_not_found(self):
         client = self._make_client()
         meeting = {
