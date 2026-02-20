@@ -7,7 +7,7 @@ import logging
 import requests
 
 logger = logging.getLogger(__name__)
-DISCORD_MENTION = "@ny8888"
+DISCORD_MENTION = "<@924890600174661722>"
 
 
 class DiscordNotifier:
