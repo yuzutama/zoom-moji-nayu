@@ -78,7 +78,7 @@ def process_recordings(
 ) -> list[str]:
     """未処理の録画を処理し、新たに処理したIDのリストを返す。"""
     now = datetime.now(timezone.utc)
-    from_date = (now - timedelta(days=1)).strftime("%Y-%m-%d")
+    from_date = (now - timedelta(days=7)).strftime("%Y-%m-%d")
     to_date = now.strftime("%Y-%m-%d")
 
     recordings = zoom.get_recordings(from_date=from_date, to_date=to_date)
