@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import logging
 from datetime import datetime, timedelta, timezone
@@ -70,18 +71,29 @@ def _parse_zoom_summary(summary_data: dict) -> SummaryData | None:
     )
 
 
+def _date_chunks(from_dt: datetime, to_dt: datetime, max_days: int = 30):
+    """日付範囲をZoom APIの上限（30日）ごとに分割する。"""
+    cursor = from_dt
+    while cursor < to_dt:
+        chunk_end = min(cursor + timedelta(days=max_days), to_dt)
+        yield cursor.strftime("%Y-%m-%d"), chunk_end.strftime("%Y-%m-%d")
+        cursor = chunk_end + timedelta(days=1)
+
+
 def process_recordings(
     zoom: ZoomClient,
     gdocs: GDocsClient,
-    discord: DiscordNotifier,
+    discord: DiscordNotifier | None,
     processed_ids: set[str],
+    days: int = 1,
 ) -> list[str]:
     """未処理の録画を処理し、新たに処理したIDのリストを返す。"""
     now = datetime.now(timezone.utc)
-    from_date = (now - timedelta(days=1)).strftime("%Y-%m-%d")
-    to_date = now.strftime("%Y-%m-%d")
+    from_dt = now - timedelta(days=days)
 
-    recordings = zoom.get_recordings(from_date=from_date, to_date=to_date)
+    recordings = []
+    for from_date, to_date in _date_chunks(from_dt, now):
+        recordings.extend(zoom.get_recordings(from_date=from_date, to_date=to_date))
     new_ids: list[str] = []
 
     for meeting in recordings:
@@ -133,27 +145,40 @@ def process_recordings(
             gdocs_url = gdocs.get_document_url(doc_id)
 
             # Discord通知
-            discord.notify(
-                meeting_topic=doc_title,
-                gdocs_url=gdocs_url,
-                recording_url=recording_url,
-            )
+            if discord:
+                discord.notify(
+                    meeting_topic=doc_title,
+                    gdocs_url=gdocs_url,
+                    recording_url=recording_url,
+                )
 
             new_ids.append(meeting_id)
             logger.info("Processed: %s", metadata.topic)
 
         except Exception as e:
             logger.exception("Failed to process meeting: %s", meeting_id)
-            discord.notify_error(
-                meeting_topic=meeting.get("topic", meeting_id),
-                error_message=str(e),
-            )
+            if discord:
+                discord.notify_error(
+                    meeting_topic=meeting.get("topic", meeting_id),
+                    error_message=str(e),
+                )
             continue
 
     return new_ids
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Zoom文字起こし自動同期")
+    parser.add_argument(
+        "--days", type=int, default=1,
+        help="何日前まで遡って取得するか（デフォルト: 1）",
+    )
+    parser.add_argument(
+        "--no-discord", action="store_true",
+        help="Discord通知をスキップする",
+    )
+    args = parser.parse_args()
+
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
     zoom_config = get_zoom_config()
@@ -167,10 +192,10 @@ def main() -> None:
         refresh_token=google_config["refresh_token"],
         folder_id=google_config["drive_folder_id"],
     )
-    discord = DiscordNotifier(webhook_url=discord_config["webhook_url"])
+    discord = None if args.no_discord else DiscordNotifier(webhook_url=discord_config["webhook_url"])
 
     processed_ids = set(load_processed(PROCESSED_FILE))
-    new_ids = process_recordings(zoom, gdocs, discord, processed_ids)
+    new_ids = process_recordings(zoom, gdocs, discord, processed_ids, days=args.days)
 
     if new_ids:
         all_ids = list(processed_ids) + new_ids
